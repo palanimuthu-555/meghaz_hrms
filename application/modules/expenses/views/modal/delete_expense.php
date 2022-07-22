@@ -1,0 +1,22 @@
+<?php
+$e = Expense::view_by_id($expense);
+$p = ($e->project > 0) ? Project::by_id($e->project) : NULL;
+$cur = ($p != NULL) ? $p->currency : Client::view_by_id($e->client)->currency;
+?>
+<div class="modal-dialog modal-dialog-centered">
+	<div class="modal-content">
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal">&times;</button> 
+			<h4 class="modal-title"><?=lang('delete_expense')?> <?=Applib::format_currency($cur, $e->amount)?></h4>
+		</div>
+		<?php echo form_open(base_url().'expenses/delete'); ?>
+			<div class="modal-body">
+				<p class="text-center"><?=lang('delete_expense_warning')?></p>
+				<input type="hidden" name="expense" value="<?=$expense?>">
+			</div>
+			<div class="modal-footer text-center" style="text-align:center;"> <a style="min-width:100px" href="#" class="btn btn-default" data-dismiss="modal"><?=lang('close')?></a>
+				<button type="submit" style="min-width:100px" class="btn btn-danger"><?=lang('delete_button')?></button>
+			</div>
+		</form>
+	</div>
+</div>

@@ -1,0 +1,43 @@
+<div class="modal-dialog  modal-dialog-centered">
+	<div class="modal-content">
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal">&times;</button> 
+			<h4 class="modal-title"><?=lang('delete_user')?></h4>
+		</div>
+		<?php echo form_open(base_url().'users/account/delete'); ?>
+			<div class="modal-body">
+				<p><?=lang('delete_user_warning')?></p>
+				<ul>
+					<li><?=lang('tickets')?></li>
+					<li><?=lang('bugs')?></li>
+					<li><?=lang('comments')?></li>
+					<li><?=lang('messages')?></li>
+					<li><?=lang('activities')?></li>
+				</ul>
+				<input type="hidden" name="user_id" value="<?=$user_id?>">
+				<?php
+				$company = User::profile_info($user_id)->company;
+				if ($company >= 1) {
+					$redirect = 'companies/view/'.$company;
+				}else{
+					$redirect = 'users/account';				
+				}
+				?>
+				<input type="hidden" name="r_url" value="<?=base_url()?><?=$redirect?>">
+				<div class="modal-btn delete-action">
+					<div class="row">
+						<div class="col-6">
+							<a href="javascript:void(0);" data-dismiss="modal" class="btn btn-primary continue-btn"><?=lang('close')?></a>
+						</div>
+						<div class="col-6">
+							<button type="submit" class="btn btn-primary cancel-btn"><?=lang('delete_button')?></button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- <div class="modal-footer"> <a href="#" class="btn btn-default" data-dismiss="modal"><?=lang('close')?></a>
+				<button type="submit" class="btn btn-danger"><?=lang('delete_button')?></button> -->
+			</div>
+		</form>
+	</div>
+</div>

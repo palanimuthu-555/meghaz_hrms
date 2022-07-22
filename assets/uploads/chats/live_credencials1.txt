@@ -1,0 +1,7 @@
+   http://hrmsmaxx.com/phpmyadmin/   
+user name : root
+pass : Dreams99
+
+
+CPanel URL:  https://sg3plcpnl0040.prod.sin3.secureserver.net:2083/
+Credentials : dz95cocnc9py / Dreams@99

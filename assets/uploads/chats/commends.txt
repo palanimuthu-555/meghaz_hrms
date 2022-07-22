@@ -1,0 +1,37 @@
+start
+----
+ssh
+
+connect
+------
+$ ssh -i "hrmsmaxx.pem" ubuntu@ec2-107-21-57-127.compute-1.amazonaws.com
+
+this is for change the ownership
+--------
+ubuntu@hrmsmaxx:/var/www/clients/client0/web3/web$ sudo chown -R ubuntu:ubuntu .
+
+delete
+--------
+ubuntu@hrmsmaxx:/var/www/clients/client0/web3/web$ rm -r *
+
+list
+--------
+ubuntu@hrmsmaxx:/var/www/clients/client0/web3/web$ ls
+
+Zip
+---
+sudo zip -r web.zip web
+
+unzip
+--------
+ubuntu@hrmsmaxx:/var/www/clients/client0/web3/web$ unzip directory.zip
+
+
+chmod -R 775 folder1
+
+
+Change the ownership
+------------
+ sudo chown -R web2:www-data ../web
+
+$P$BsrmuPXW1ZVSGUSSHHaKvO1zgKNyPT0

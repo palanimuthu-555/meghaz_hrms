@@ -1,0 +1,48 @@
+	<?php if(App::is_permit('menu_reports','read'))
+	{?>
+        <div class="btn-group">
+
+              <button class="btn btn-light m-b-10 dropdown-toggle" data-toggle="dropdown"><?=lang('reports')?></button>
+            <!--   <button class="btn btn-default m-b-10 dropdown-toggle" data-toggle="dropdown"><span class="caret"></span> -->
+              </button>
+              <div class="dropdown-menu dropdown-menu-right">
+                <a class="dropdown-item selected" href="<?=base_url()?>reports/view/invoicesreport"><?=lang('invoices_report')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/invoicesbyclient"><?=lang('invoice_by_client')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/paymentsreport"><?=lang('payments_report')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/expensesreport"><?=lang('expenses_report')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/expensesbyclient"><?=lang('expenses_by_client')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/projectreport"><?=lang('project_report')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/taskreport"><?=lang('task_report')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/user_report"><?=lang('user_report')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/employee_report"><?=lang('employee_report')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/payslip_report"><?=lang('payslip_report')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/attendance_report"><?=lang('attendance_report')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/daily_report"><?=lang('daily_report')?></a>
+                <a class="dropdown-item" href="<?=base_url()?>reports/view/leave_report"><?=lang('leave_report')?></a>
+              </div>
+              </div>
+			  <?php
+			  }
+			  ?>
+
+              <?php if(!$this->uri->segment(3)){ ?>
+              <div class="btn-group">
+
+              <button class="btn btn-light dropdown-toggle m-b-10" data-toggle="dropdown"><?php if($this->input->get('setyear')) echo $this->input->get('setyear'); else echo lang('year')?></button>
+<!--               <button class="btn btn-light dropdown-toggle" data-toggle="dropdown"><span class="caret"></span>
+              </button> -->
+
+              <div class="dropdown-menu">
+              <?php
+                      $max = date('Y');
+                      $min = $max - 3;
+                    foreach (range($min, $max) as $year) 
+					{?>
+                    <a class="dropdown-item" href="<?=base_url()?>reports?setyear=<?=$year?>"><?=$year?></a>
+              <?php }
+              ?>
+                        
+              </div>
+
+              </div>
+              <?php } ?>
