@@ -75,13 +75,14 @@ $query_builder = TRUE;
 
 $db['default'] = array(
 	'dsn'	=> '',	
- 	'hostname' => 'localhost',
-	'username' => 'tqmeghaz_newhrms',
-	'password' => 'Newhrms@2221',
-	'database' => 'tqmeghaz_newhrms',
-	/*'hostname' => 'localhost',
+ // 	'hostname' => 'localhost',
+	// 'username' => 'tqmeghaz_newhrms',
+	// 'password' => 'Newhrms@2221',
+	// 'database' => 'tqmeghaz_newhrms',
+	'hostname' => 'localhost',
 	'username' => 'root',
-	'password' => '',*/
+	'password' => '',
+	'database' => 'meghaz_hrms',
 	
 	'dbdriver' => 'mysqli',
 	'dbprefix' => 'dgt_',
