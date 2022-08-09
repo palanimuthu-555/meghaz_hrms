@@ -315,7 +315,7 @@ class User extends CI_Model
     public function get_all_users_detail()
     {
         $where = array('US.activated'=>1,'US.role_id'=>3);
-        return $this->db->select('*')
+        return self::$db->select('*')
                  ->from('dgt_users US')
                  ->join('dgt_account_details AD','US.id = AD.user_id')
                  ->where($where)

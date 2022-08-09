@@ -3599,6 +3599,10 @@ $lang['add_knowledge'] = 'Add Knowledge';
 $lang['topic'] = 'Topic';
 $lang['all_tasks_are_completed'] = 'All tasks are completed';
 
+// Assignments
+
+$lang['assignments'] = 'Assignments';
+
 
 if(file_exists(APPPATH.'/language/english/custom_language.php')){
 	include APPPATH.'/language/english/custom_language.php';
