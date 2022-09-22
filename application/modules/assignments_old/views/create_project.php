@@ -19,7 +19,7 @@
 	        	<div class="card-body">
 			<?php
 			$attributes = array('class' => 'bs-example','autocomplete'=>'off','id'=>'projectAddForm');
-			echo form_open(base_url().'assignments/add_assignment_det',$attributes); ?>
+			echo form_open(base_url().'assignments/add',$attributes); ?>
 			<?=$this->session->flashdata('form_error') ?>
 				<div class="row">
 					<div class="col-md-6">
@@ -349,7 +349,7 @@
 					</div>	
 				</div>
 				<div class="m-t-20 text-center submit-section">
-					<button id="project_add_submit" class="btn btn-primary submit-btn"><i class="fa fa-plus"></i> Add Assignment</button>
+					<button id="project_add_submit" class="btn btn-primary submit-btn"> Add Assignment</button>
 				</div>
 			</form>
 		</div>

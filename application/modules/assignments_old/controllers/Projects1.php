@@ -1,6 +1,6 @@
 <?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
-class Assignments extends MX_Controller {
+class Projects extends MX_Controller {
 
     function __construct()
     {
@@ -9,17 +9,15 @@ class Assignments extends MX_Controller {
 
         $this->load->module('layouts');
         $this->load->library(array('template','form_validation'));
-        $this->load->model(array('Client','Project','App','Expense','Assignment'));
+        $this->load->model(array('Client','Project','App','Expense'));
         $this->template->title(lang('projects'));
 
         $archive = FALSE;
         if (isset($_GET['view'])) { if ($_GET['view'] == 'archive') { $archive = TRUE; } }
-		
-		if(!App::is_access('menu_projects'))
-		{
-			$this->session->set_flashdata('tokbox_error', lang('access_denied'));
-             redirect('');
-        } 
+
+        App::module_access('menu_projects');
+
+        // echo "hi123"; exit;
         $this->filter_by = $this->_filter_by();
 
         $this->applib->set_locale();
@@ -28,21 +26,12 @@ class Assignments extends MX_Controller {
 
 
     function index()
-    {   
-        $this->template->title(lang('assignments').' - '.config_item('company_name')); 
+    {
         $archive = FALSE;
         if (isset($_GET['view'])) { if ($_GET['view'] == 'archive') { $archive = TRUE; } }
         $data = array(
-            'page' => lang('assignments'),
-            // 'projects' => $this->_project_list($archive),
-            'projects' =>$this->db->select('a.*,AD.fullname')
-                            ->from('dgt_assignments_det a')
-                            ->join('account_details AD','AD.user_id =a.resources','left')
-                            ->where('a.created_by',$this->session->userdata('user_id'))
-                            ->get()->result(),
-							
-			// $this->db->join('account_details AD','AD.user_id = U.id')->get_where('assignments_det',array('created_by'=>$this->session->userdata('user_id')))->result(),
-
+            'page' => lang('projects'),
+            'projects' => $this->_project_list($archive),
             'datatables' => TRUE,
             'archive' => $archive
         );
@@ -55,18 +44,18 @@ class Assignments extends MX_Controller {
     function view($project = NULL)
     {
         // $this->_check_owner($project);
-        $this->template->title(lang('projects').' - '.config_item('company_name')); 
+
         $data = array(
-            'page'          => lang('all_projects'),
-            'datatables'    => TRUE,
-            'fuelux'        => TRUE,
-            'editor'        => TRUE,
-            'nouislider'    => TRUE,
-            'project'       => $project,
-            'todo_list'     => TRUE,
-            'datepicker'    => TRUE,
+            'page'			=> lang('projects'),
+            'datatables'	=> TRUE,
+            'fuelux'		=> TRUE,
+            'editor'		=> TRUE,
+            'nouislider'	=> TRUE,
+            'project'		=> $project,
+            'todo_list'		=> TRUE,
+            'datepicker'	=> TRUE,
             'form'          => TRUE,
-            'task_checkbox' => TRUE
+            'task_checkbox'	=> TRUE
         );
         $this->load->helper('app');
 
@@ -146,12 +135,14 @@ class Assignments extends MX_Controller {
                         redirect('projects');
                     }
                 }
-                 $_POST['start_date'] = date("Y-m-d", strtotime($this->input->post('start_date')));
-                 $_POST['due_date'] = date("Y-m-d", strtotime($this->input->post('due_date')));
+                if(valid_date($_POST['start_date']))
+                $_POST['start_date'] = Applib::date_formatter($_POST['start_date']);
+                if(valid_date($_POST['due_date']))
+                $_POST['due_date'] = Applib::date_formatter($_POST['due_date']);
 
                 if (isset($_POST['files'])) { unset($_POST['files']); }
 
-                $project_id = Assignment::save($this->input->post());
+                $project_id = Project::save($this->input->post());
 
                 // Inherit currency and language settings
 
@@ -167,7 +158,7 @@ class Assignments extends MX_Controller {
                     'language' => $client_lang->name,
                     'project_id' => $project_id
                 );
-                Assignment::update($project_id,$data);
+                Project::update($project_id,$data);
 
 
                 // Store assignments in assign_projects table
@@ -176,7 +167,7 @@ class Assignments extends MX_Controller {
 
                 // echo $this->input->post('assign_lead'); exit;
 
-                Assignment::delete_team($project_id);
+                Project::delete_team($project_id);
 
                 foreach ($assign as $key => $value) {
                     $args = array(
@@ -188,7 +179,7 @@ class Assignments extends MX_Controller {
 
                 // Set Fixed Rate
                 $data = array('fixed_rate' => $fixed_rate);
-                Assignment::update($project_id,$data);
+                Project::update($project_id,$data);
 
                 // default project settings
                 $default_settings = json_decode(config_item('default_project_settings'),TRUE);
@@ -200,7 +191,7 @@ class Assignments extends MX_Controller {
                 $default_settings = json_encode($default_settings);
 
                 $data = array('settings' => $default_settings);
-                Assignment::update($project_id,$data);
+                Project::update($project_id,$data);
                 // echo $project_id; exit;
 
                 // echo config_item('notify_project_assignments'); exit;
@@ -243,201 +234,14 @@ class Assignments extends MX_Controller {
 
         }else{
             $data = array(
-                'page' => lang('assignments'),
+                'page' => lang('projects'),
                 'form' => TRUE,
                 'datepicker' => TRUE,
                 'nouislider' => TRUE,
-                'editor'    => TRUE,
+                'editor'	=> TRUE,
                 'set_fixed_rate' => TRUE,
                 'projects' => $this->_project_list()
             );
-            $this->template->title(lang('projects').' - '.config_item('company_name')); 
-            $this->template
-                ->set_layout('users')
-                ->build('create_project',isset($data) ? $data : NULL);
-        }
-    }
-	
-	
-	function add_assignment_det()
-    {
-        // echo User::login_role_name(); exit;
-        $role_id = $this->session->userdata('role_id');
-        $user_id = $this->session->userdata('user_id');
-        $user_details = $this->db->get_where('users',array('id'=>$user_id,'role_id'=>3,'is_teamlead'=>'yes'))->row_array();
-        if(empty($user_details)){
-            if(!User::can_add_project()) App::access_denied('projects');
-        }
-
-        if ($this->input->post()) {
-			// echo "<pre>"; print_r($_POST); //exit;
-            // check form validation
-            $this->form_validation->set_rules('billed_ac', 'Billed Account', 'required');
-            $this->form_validation->set_rules('bill_rate', 'Bill Rate', 'required');
-            $this->form_validation->set_rules('payee_ac', 'Payee Account', 'required');
-            $this->form_validation->set_rules('pay_rate', 'Pay Rate', 'required');
-            $this->form_validation->set_rules('bill_terms', 'Bill Terms', 'required');
-            $this->form_validation->set_rules('pay_terms', 'Pay Terms', 'required');
-            $this->form_validation->set_rules('bill_cycle', 'Bill Cycle', 'required');
-            $this->form_validation->set_rules('pay_cycle', 'Pay Cycle', 'required');
-            $this->form_validation->set_rules('resources', 'Resource', 'required');
-            $this->form_validation->set_rules('assignment_name', 'Assignment Name', 'required');
-            $this->form_validation->set_rules('start_date', 'Start Date', 'required');
-            $this->form_validation->set_rules('due_date', 'Due Date', 'required');
-            $this->form_validation->set_rules('margin_rate', 'Margin Rate', 'required');
-            $this->form_validation->set_rules('default_hours', 'Default Hours', 'required');
-            $this->form_validation->set_rules('emp_type', 'Employment Type', 'required');
-            $this->form_validation->set_rules('week_start_day', 'Week Start Day', 'required');
-            $this->form_validation->set_rules('individual_invoice', 'Individual Invoice', 'required');
-            $this->form_validation->set_rules('is_active', 'Is Active', 'required');
-
-            if ($this->form_validation->run() == FALSE) // Validation ok
-            {
-                Applib::make_flashdata(array(
-                    'response_status' => 'error',
-                    'message' => lang('operation_failed'),
-                    'form_error'=> validation_errors()
-                ));
-                // redirect('assignments/add');
-            }else{
-
-                
-                // if ($this->input->post('fixed_rate') == 'on') { $fixed_rate = 'Yes'; } else { $fixed_rate = 'No'; }
-
-                // unset($_POST['fixed_rate']);
-
-                // if (User::login_role_name() != 'client') { // If added by client, just assign admin
-                    // if(User::login_role_name() == 'staff'){
-                        // if(!empty($user_details)){
-                            // $_POST['assign_to'] = serialize($this->input->post('assign_to'));
-                        // }
-                        // $_POST['assign_to'] = 'a:1:{i:0;s:1:"'.User::get_id().'";}';
-                    // }else{
-                        // $_POST['assign_to'] = serialize($this->input->post('assign_to'));
-                    // }
-
-                // }else{
-                    // $_POST['assign_to'] = 'a:1:{i:0;s:1:"1";}';
-                    // $_POST['progress'] = 0;
-                // }
-
-                if(User::login_role_name() == 'client'){
-                    $company_id = User::profile_info(User::get_id())->company;
-                    if($company_id > 0){
-                        $_POST['client'] = $company_id;
-                    }else{
-                        $this->session->set_flashdata('tokbox_error', lang('company_not_set'));
-                        redirect('projects');
-                    }
-                }
-                 $_POST['start_date'] = date("Y-m-d", strtotime($this->input->post('start_date')));
-                 $_POST['due_date'] = date("Y-m-d", strtotime($this->input->post('due_date')));
-                 $_POST['created_by'] = $user_id;
-                if (isset($_POST['files'])) { unset($_POST['files']); }
-
-                $project_id = Assignment::save_assignment_det($this->input->post());
-// echo "<pre>"; print_r($project_id); exit;
-
-                // Inherit currency and language settings
-
-                if ($_POST['client'] > 0) {
-                    $client_cur = Client::client_currency($_POST['client']);
-                    $client_lang = Client::client_language($_POST['client']);
-                } else {
-                    $client_cur = App::currencies(config_item('default_currency'));
-                    $client_lang = App::languages(config_item('default_language'));
-                }
-                // $data = array(
-                    // 'currency' => $client_cur->code,
-                    // 'language' => $client_lang->name,
-                    // 'project_id' => $project_id
-                // );
-                // Assignment::update($project_id,$data);
-
-
-                // Store assignments in assign_projects table
-
-                // $assign = unserialize($_POST['assign_to']);
-
-                // echo $this->input->post('assign_lead'); exit;
-
-                // Assignment::delete_team($project_id);
-
-                // foreach ($assign as $key => $value) {
-                    // $args = array(
-                        // 'assigned_user' => $value,
-                        // 'project_assigned' => $project_id
-                    // );
-                    // App::save_data('assign_projects',$args);
-                // }
-
-                // Set Fixed Rate
-                // $data = array('fixed_rate' => $fixed_rate);
-                // Assignment::update($project_id,$data);
-
-                // default project settings
-                $default_settings = json_decode(config_item('default_project_settings'),TRUE);
-                foreach ($default_settings as $key => &$value) {
-                    if (strtolower($value) == 'off') {
-                        unset($default_settings[$key]);
-                    }
-                }
-                $default_settings = json_encode($default_settings);
-
-                // $data = array('settings' => $default_settings);
-                // Assignment::update($project_id,$data);
-                // echo $project_id; exit;
-
-                // echo config_item('notify_project_assignments'); exit;
-
-
-                // $this->lead_notification($project_id);
-                // Send email to the assigned users
-                // if(config_item('notify_project_assignments') == 'TRUE'){
-                    // $this->assigned_notification($project_id);
-                // }
-
-                // Send email to client
-                if(config_item('notify_project_opened') == 'TRUE'){
-                    $this->client_notification($project_id);
-                }
-
-                // Post to slack channel
-                if(config_item('slack_notification') == 'TRUE'){
-                    $this->load->helper('slack');
-                    $slack = new Slack_Post;
-                    $slack->slack_create_project($project_id,User::get_id());
-                }
-
-                $data = array(
-                    'module' => 'projects',
-                    'module_field_id' => $project_id,
-                    'user' => User::get_id(),
-                    'activity' => 'activity_added_new_project',
-                    'icon' => 'fa-coffee',
-                    'value1' => $_POST['project_title'],
-                    'value2' => ''
-                );
-                App::Log($data);
-
-                // Applib::go_to('projects/view/'.$project_id.'?group=dashboard','success',lang('project_added_successfully'));
-                $this->session->set_flashdata('tokbox_success', lang('project_added_successfully'));
-                // redirect('projects/view/'.$project_id.'?group=dashboard');
-                redirect('assignments/add');
-            }
-
-
-        }else{
-            $data = array(
-                'page' => lang('assignments'),
-                'form' => TRUE,
-                'datepicker' => TRUE,
-                'nouislider' => TRUE,
-                'editor'    => TRUE,
-                'set_fixed_rate' => TRUE,
-                'projects' => $this->_project_list()
-            );
-            $this->template->title(lang('projects').' - '.config_item('company_name')); 
             $this->template
                 ->set_layout('users')
                 ->build('create_project',isset($data) ? $data : NULL);
@@ -455,7 +259,7 @@ class Assignments extends MX_Controller {
         if ($this->input->post()) {
             $project_id = $this->input->post('project_id');
 
-            // if(!User::can_edit_project(Assignment::by_id($project_id)->client,$project_id)) App::access_denied('projects');
+            // if(!User::can_edit_project(Project::by_id($project_id)->client,$project_id)) App::access_denied('projects');
             // check form validation
             $this->form_validation->set_rules('project_code', 'Project Code', 'required');
             $this->form_validation->set_rules('project_title', 'Project Title', 'required');
@@ -474,7 +278,7 @@ class Assignments extends MX_Controller {
                 redirect('projects/view/'.$project_id.'/?group=dashboard&action=edit');
             }else{
                 $notify = TRUE; // Send email only when team changed
-                $current_team = Assignment::by_id($project_id)->assign_to;
+                $current_team = Project::by_id($project_id)->assign_to;
                 if(serialize($this->input->post('assign_to')) == $current_team) $notify = FALSE;
 
 
@@ -483,7 +287,7 @@ class Assignments extends MX_Controller {
 
                 $new_team = $this->input->post('assign_to');
 
-                Assignment::delete_team($project_id);
+                Project::delete_team($project_id);
 
                 foreach ($new_team as $key => $value) {
                     $data = array(
@@ -504,24 +308,27 @@ class Assignments extends MX_Controller {
 
                 $_POST['assign_to'] = serialize($new_team);
 
-                $_POST['start_date'] = date("Y-m-d", strtotime($this->input->post('start_date')));
-                 $_POST['due_date'] = date("Y-m-d", strtotime($this->input->post('due_date')));
+                if(valid_date($_POST['start_date']))
+                $_POST['start_date'] = Applib::date_formatter($_POST['start_date']);
+
+                if(valid_date($_POST['due_date']))
+                $_POST['due_date'] = Applib::date_formatter($_POST['due_date']);
 
                 if (isset($_POST['files'])) unset($_POST['files']);
 
-                Assignment::update($project_id,$this->input->post());
+                Project::update($project_id,$this->input->post());
 
                 $data = array(
                     'currency' => $client_cur->code,
                     'language' => $client_lang->name,
                     'project_id' => $project_id
                 );
-                Assignment::update($project_id,$data);
+                Project::update($project_id,$data);
 
 
                 // Set Fixed Rate
                 $data = array('fixed_rate' => $fixed_rate);
-                Assignment::update($project_id,$data);
+                Project::update($project_id,$data);
 
                 // Send email to the assigned users
                 if(config_item('notify_project_assignments') == 'TRUE' && $notify){
@@ -548,9 +355,8 @@ class Assignments extends MX_Controller {
                 redirect('projects/view/'.$project_id);
             }
         }else{
-            $this->template->title(lang('projects').' - '.config_item('company_name')); 
             $data = array(
-                'page' => lang('all_projects'),
+                'page' => lang('projects'),
                 'form' => TRUE,
                 'datepicker' => TRUE,
                 'nouislider' => TRUE,
@@ -584,11 +390,11 @@ class Assignments extends MX_Controller {
                 }else{
                     $project = $this->input->post('project',TRUE);
                     $visible = ($this->input->post('visible') == 'on') ? 'Yes' : 'No';
-                    $data = array('list_name'   => $this->input->post('todo_item'),
-                        'saved_by'  => User::get_id(),
+                    $data = array('list_name' 	=> $this->input->post('todo_item'),
+                        'saved_by'	=> User::get_id(),
                         'module'    => 'projects',
-                        'visible'       => $visible,
-                        'project'       => $project
+                        'visible'		=> $visible,
+                        'project'		=> $project
                     );
                     App::save_data('todo',$data);
                     // Applib::go_to('projects/view/'.$project,'success',lang('operation_successful'));
@@ -618,10 +424,10 @@ class Assignments extends MX_Controller {
                     $project = $this->input->post('project',TRUE);
                     if(!isset($_POST['visible'])) $visible = 'No';
                     $visible = ($this->input->post('visible') == 'on') ? 'Yes' : 'No';
-                    $data = array('list_name'   => $this->input->post('todo_item'),
-                        'saved_by'  => User::get_id(),
+                    $data = array('list_name' 	=> $this->input->post('todo_item'),
+                        'saved_by'	=> User::get_id(),
                         'module'    => 'projects',
-                        'visible'       => $visible
+                        'visible'		=> $visible
                     );
                     App::update('todo',array('id'=>$id),$data);
                     // Applib::go_to('projects/view/'.$project,'success',lang('operation_successful'));
@@ -697,7 +503,7 @@ class Assignments extends MX_Controller {
 
                 $project = $this->input->post('project_id',TRUE);
                 if(User::is_admin() || User::perm_allowed(User::get_id(),'delete_projects')){
-                    Assignment::delete($project);
+                    Project::delete($project);
                     // Applib::go_to('projects','success',lang('project_deleted_successfully'));
                     $this->session->set_flashdata('tokbox_success', lang('project_deleted_successfully'));
                     redirect('projects');
@@ -716,11 +522,10 @@ class Assignments extends MX_Controller {
     function gantt($project = NULL)
     {
         $data = array(
-            'page' => lang('all_projects'),
+            'page' => lang('projects'),
             'project' => $project,
             'gantt' => TRUE,
         );
-        $this->template->title(lang('projects').' - '.config_item('company_name')); 
         $this->template
             ->set_layout('users')
             ->build('gantt',isset($data) ? $data : NULL);
@@ -733,11 +538,11 @@ class Assignments extends MX_Controller {
     {
         $archived = $this->uri->segment(4);
         $data = array("archived" => $archived);
-        Assignment::update($id,$data);
+        Project::update($id,$data);
 
         // Post to slack channel
         if(config_item('slack_notification') == 'TRUE'){
-            $project_title = Assignment::by_id($id)->project_title;
+            $project_title = Project::by_id($id)->project_title;
             Applib::slack(
                 sprintf(lang('project_archived_msg'), $project_title,date('d-M-Y H:i:s')),
                 sprintf(lang('project_archived'), $project_title),
@@ -783,33 +588,33 @@ class Assignments extends MX_Controller {
                     redirect('projects/view/'.$project.'?group=dashboard');
             }else{
 
-                $inf = Assignment::by_id($project);
+                $inf = Project::by_id($project);
 
                 $new_code = filter_var($inf->project_code,FILTER_SANITIZE_NUMBER_INT)+1 ;
 
                 $new_project = array(
-                    'project_code'  => config_item('project_prefix').$new_code,
+                    'project_code' 	=> config_item('project_prefix').$new_code,
                     'project_title' => $inf->project_title.' clone',
-                    'description'   => $inf->description,
-                    'client'        => $inf->client,
-                    'currency'      => $inf->currency,
-                    'start_date'    => $inf->start_date,
-                    'due_date'      => $inf->due_date,
-                    'fixed_rate'    => $inf->fixed_rate,
-                    'hourly_rate'   => $inf->hourly_rate,
-                    'fixed_price'   => $inf->fixed_price,
-                    'progress'      => $inf->progress,
-                    'notes'         => $inf->notes,
-                    'assign_to'     => $inf->assign_to,
-                    'status'        => $inf->status,
-                    'settings'      => $inf->settings,
+                    'description' 	=> $inf->description,
+                    'client'		=> $inf->client,
+                    'currency'		=> $inf->currency,
+                    'start_date' 	=> $inf->start_date,
+                    'due_date'		=> $inf->due_date,
+                    'fixed_rate'	=> $inf->fixed_rate,
+                    'hourly_rate'	=> $inf->hourly_rate,
+                    'fixed_price'	=> $inf->fixed_price,
+                    'progress'		=> $inf->progress,
+                    'notes'			=> $inf->notes,
+                    'assign_to'		=> $inf->assign_to,
+                    'status'		=> $inf->status,
+                    'settings'		=> $inf->settings,
                     'estimate_hours'=> $inf->estimate_hours,
                     'language'      => $inf->language,
                     'archived'      => 0,
-                    'date_created'  => $inf->date_created
+                    'date_created'	=> $inf->date_created
                 );
 
-                $new_project_id = Assignment::save($new_project);
+                $new_project_id = Project::save($new_project);
 
                 $team = unserialize($inf->assign_to);
                 foreach ($team as $key => $user) {
@@ -820,33 +625,33 @@ class Assignments extends MX_Controller {
                     App::save_data('assign_projects',$args);
                 }
 
-                foreach (Assignment::has_milestones($project) as $key => $milestone) {
+                foreach (Project::has_milestones($project) as $key => $milestone) {
                     $params = array(
-                        'milestone_name'    => $milestone->milestone_name,
-                        'description'       => $milestone->description,
-                        'project'           => $new_project_id,
-                        'start_date'        => $milestone->start_date,
-                        'due_date'          => $milestone->due_date
+                        'milestone_name' 	=> $milestone->milestone_name,
+                        'description' 		=> $milestone->description,
+                        'project'			=> $new_project_id,
+                        'start_date' 		=> $milestone->start_date,
+                        'due_date'			=> $milestone->due_date
                     );
                     App::save_data('milestones',$params);
                 }
 
-                foreach (Assignment::has_tasks($project) as $key => $task) {
+                foreach (Project::has_tasks($project) as $key => $task) {
                     $args = array(
-                        'task_name'         => $task->task_name,
-                        'project'           => $new_project_id,
-                        'milestone'         => $task->milestone,
-                        'assigned_to'       => $task->assigned_to,
-                        'description'       => $task->description,
-                        'visible'           => $task->visible,
-                        'task_progress'     => $task->task_progress,
-                        'timer_status'      => $task->timer_status,
-                        'timer_started_by'  => $task->timer_started_by,
-                        'start_time'        => $task->start_time,
-                        'estimated_hours'   => $task->estimated_hours,
-                        'logged_time'       => $task->logged_time,
-                        'due_date'          => $task->due_date,
-                        'added_by'          => $task->added_by
+                        'task_name' 		=> $task->task_name,
+                        'project' 			=> $new_project_id,
+                        'milestone' 		=> $task->milestone,
+                        'assigned_to' 		=> $task->assigned_to,
+                        'description' 		=> $task->description,
+                        'visible'  			=> $task->visible,
+                        'task_progress' 	=> $task->task_progress,
+                        'timer_status' 		=> $task->timer_status,
+                        'timer_started_by' 	=> $task->timer_started_by,
+                        'start_time' 		=> $task->start_time,
+                        'estimated_hours' 	=> $task->estimated_hours,
+                        'logged_time' 		=> $task->logged_time,
+                        'due_date' 			=> $task->due_date,
+                        'added_by' 			=> $task->added_by
                     );
                     $task_id = App::save_data('tasks',$args);
 
@@ -861,7 +666,7 @@ class Assignments extends MX_Controller {
                         App::save_data('assign_tasks',$args);
                     }
                 }
-                foreach (Assignment::has_links($project) as $key => $link) {
+                foreach (Project::has_links($project) as $key => $link) {
                     $args = array(
                                 'project_id'    => $new_project_id,
                                 'client'        => $inf->client,
@@ -906,7 +711,7 @@ class Assignments extends MX_Controller {
             $settings = json_encode($_POST);
             $data = array('settings' => $settings);
 
-            Assignment::update($project_id,$data);
+            Project::update($project_id,$data);
 
             // $this->session->set_flashdata('response_status', 'success');
             // $this->session->set_flashdata('message', lang('settings_updated_successfully'));
@@ -934,7 +739,7 @@ class Assignments extends MX_Controller {
             }else{
                 $assigned = serialize($this->input->post('assigned_to'));
 
-                Assignment::delete_team($project);
+                Project::delete_team($project);
 
                 $assign = $this->input->post('assigned_to');
 
@@ -943,14 +748,14 @@ class Assignments extends MX_Controller {
                     App::save_data('assign_projects',$data);
                 }
 
-                Assignment::update($project,array('assign_to' => $assigned));
+                Project::update($project,array('assign_to' => $assigned));
 
                 // Send email to assigned members
                 if(config_item('notify_project_assignments') == 'TRUE') $this->assigned_notification($project);
 
                 // Post to slack channel
                 if(config_item('slack_notification') == 'TRUE'){
-                    $project_title = Assignment::by_id($project)->project_title;
+                    $project_title = Project::by_id($project)->project_title;
                     Applib::slack(
                         sprintf(lang('team_updated_msg'), $project_title),
                         sprintf(lang('team_updated'), $project_title),
@@ -966,7 +771,7 @@ class Assignments extends MX_Controller {
                     'user' => User::get_id(),
                     'activity' => 'activity_edited_team',
                     'icon' => 'fa-group',
-                    'value1' => Assignment::by_id($project)->project_title,
+                    'value1' => Project::by_id($project)->project_title,
                     'value2' => ''
                 );
                 App::Log($data);
@@ -1004,17 +809,17 @@ class Assignments extends MX_Controller {
 
                 if(config_item('increment_invoice_number') == 'TRUE') $reference_no = config_item('invoice_prefix').Invoice::generate_invoice_number();
 
-                $info = Assignment::by_id($project);
+                $info = Project::by_id($project);
                 $project_rate = ($info->fixed_rate == 'Yes') ? $info->fixed_price : $info->hourly_rate;
                 $due_date = strftime(config_item('date_format'), strtotime("+".config_item('invoices_due_after')." days"));
 
                 $data = array(
-                    'reference_no'  => $reference_no,
-                    'tax'           => 0,
-                    'client'        => $info->client,
-                    'currency'      => $info->currency,
-                    'due_date'      => $due_date,
-                    'notes'         => config_item('default_terms')
+                    'reference_no' 	=> $reference_no,
+                    'tax'			=> 0,
+                    'client'		=> $info->client,
+                    'currency' 		=> $info->currency,
+                    'due_date'		=> $due_date,
+                    'notes'			=> config_item('default_terms')
                 );
                 $invoice_id = Invoice::save($data);
 
@@ -1029,17 +834,17 @@ class Assignments extends MX_Controller {
                 App::Log($activity); // Log activity
 
                 $task_list = array();
-                foreach (Assignment::has_tasks($project) as $task) {
-                    $task_list[] = $task->task_name.' - '.Applib::sec_to_hours(Assignment::task_timer($task->t_id));
+                foreach (Project::has_tasks($project) as $task) {
+                    $task_list[] = $task->task_name.' - '.Applib::sec_to_hours(Project::task_timer($task->t_id));
                 }
 
                 $items = array(
                     'invoice_id' => $invoice_id,
-                    'item_name'  => $info->project_title,
-                    'item_desc' => lang('time_spent').' : '.Assignment::total_hours($project).' '.lang('hours').PHP_EOL.implode(PHP_EOL, $task_list),
-                    'unit_cost' => $project_rate,
-                    'quantity'  => Applib::format_deci(Assignment::total_hours($project)),
-                    'total_cost' => Applib::format_deci(Assignment::sub_total($project))
+                    'item_name'	 => $info->project_title,
+                    'item_desc'	=> lang('time_spent').' : '.Project::total_hours($project).' '.lang('hours').PHP_EOL.implode(PHP_EOL, $task_list),
+                    'unit_cost'	=> $project_rate,
+                    'quantity'	=> Applib::format_deci(Project::total_hours($project)),
+                    'total_cost' => Applib::format_deci(Project::sub_total($project))
                 );
                 Invoice::save_items($items);
 
@@ -1056,14 +861,14 @@ class Assignments extends MX_Controller {
                         $e = Expense::view_by_id($key);
                         $cat = App::get_category_by_id($e->category);
 
-                        $project_title = Assignment::by_id($e->project)->project_title;
+                        $project_title = Project::by_id($e->project)->project_title;
                         $items = array(
                             'item_name' => lang('expenses').' [ '.$e->expense_date.' ]',
-                            'item_desc' => '['.$project_title.']'.PHP_EOL.'&raquo; '.$cat.PHP_EOL.'&raquo; '.$e->notes,
-                            'unit_cost' => $e->amount,
-                            'invoice_id'    => $invoice_id,
-                            'total_cost'    => $e->amount,
-                            'quantity'      => '1.00'
+                            'item_desc'	=> '['.$project_title.']'.PHP_EOL.'&raquo; '.$cat.PHP_EOL.'&raquo; '.$e->notes,
+                            'unit_cost'	=> $e->amount,
+                            'invoice_id'	=> $invoice_id,
+                            'total_cost'	=> $e->amount,
+                            'quantity'		=> '1.00'
 
                         );
                         Invoice::save_items($items);
@@ -1143,7 +948,7 @@ class Assignments extends MX_Controller {
                 'user' => User::get_id(),
                 'activity' => 'activity_project_comment_added',
                 'icon' => 'fa-comment',
-                'value1' => Assignment::by_id($id)->project_title,
+                'value1' => Project::by_id($id)->project_title,
                 'value2' => ''
             );
             App::Log($data);
@@ -1157,9 +962,9 @@ class Assignments extends MX_Controller {
             if(config_item('slack_notification') == 'TRUE'){
                 $this->load->helper('slack');
                 $slack = new Slack_Post;
-                $params = array('project'       => $id,
+                $params = array('project'   	=> $id,
                     'comment'       => $comment_id,
-                    'user'          => User::get_id()
+                    'user'      	=> User::get_id()
                 );
                 $slack->slack_project_comment($params);
             }
@@ -1204,7 +1009,7 @@ class Assignments extends MX_Controller {
                     $slack = new Slack_Post;
                     $params = array('project'   => $project_id,
                         'reply'     => $reply_id,
-                        'user'      => User::get_id()
+                        'user'     	=> User::get_id()
                     );
                     $slack->slack_project_comment_reply($params);
                 }
@@ -1227,7 +1032,7 @@ class Assignments extends MX_Controller {
 
         if($this->input->post()){
             $id = $this->input->post('id',TRUE);
-            $info = Assignment::view_comment($id);
+            $info = Project::view_comment($id);
 
             if(User::get_id() == $info->posted_by || User::is_admin()){
                 App::delete('comments',array('comment_id'=>$id));
@@ -1237,7 +1042,7 @@ class Assignments extends MX_Controller {
             }
             redirect('projects/view/'.$info->project.'?group=comments');
         }else{
-            $data['info'] = Assignment::view_comment($id);
+            $data['info'] = Project::view_comment($id);
             $data['action'] = 'delete_comment';
             $this->load->view('modal/project_action',isset($data) ? $data : NULL);
         }
@@ -1246,7 +1051,7 @@ class Assignments extends MX_Controller {
     function delete_reply($id = NULL){
         if($this->input->post()){
             $id = $this->input->post('reply_id');
-            $replied_by = Assignment::view_reply($id)->replied_by;
+            $replied_by = Project::view_reply($id)->replied_by;
             if(User::get_id() == $replied_by || User::is_admin()){
                 App::delete('comment_replies',array('reply_id'=>$id));
                 $this->session->set_flashdata('response_status', 'success');
@@ -1254,7 +1059,7 @@ class Assignments extends MX_Controller {
             }
             redirect($_SERVER['HTTP_REFERER']);
         }else{
-            $data['info'] = Assignment::view_reply($id);
+            $data['info'] = Project::view_reply($id);
             $data['action'] = 'delete_reply';
             $this->load->view('modal/project_action',isset($data) ? $data : NULL);
         }
@@ -1264,7 +1069,7 @@ class Assignments extends MX_Controller {
     {
         if (isset($_GET['id'])) {
             $file_id = $this->input->get('id', TRUE);
-            $info = Assignment::view_file($file_id);
+            $info = Project::view_file($file_id);
             $this->load->helper('download');
 
             if($info->file_name == ''){
@@ -1290,12 +1095,12 @@ class Assignments extends MX_Controller {
         $action = ucfirst($this->uri->segment(3));
         $status = ($action == 'On') ? 1 : 0;
         $project = $this->uri->segment(4);
-        $info = Assignment::by_id($project);
+        $info = Project::by_id($project);
         $timer_msg = '';
         $response = 'success';
         if ($action == 'Off') {
 
-            $project_logged_time =  Assignment::total_hours($project);
+            $project_logged_time =  Project::total_hours($project);
             $timer = $this->db->where(array('user'=>User::get_id(),'status'=>'1','project'=>$project))->get('project_timer')->row();
             $time_logged = (time() - $timer->start_time) + $project_logged_time;
 
@@ -1303,7 +1108,7 @@ class Assignments extends MX_Controller {
             $this->db->where(array('user'=>User::get_id(),'status'=>'1','project'=>$project,'time_in_sec'=> 0,'end_time'=>NULL))->update('project_timer',$data);
 
             $data = array('time_logged'=>Applib::format_deci($time_logged),'timer_start'=>'');
-            Assignment::update($project,$data);
+            Project::update($project,$data);
 
             $timer_msg = 'timer_stopped_success';
 
@@ -1340,7 +1145,7 @@ class Assignments extends MX_Controller {
             if(!User::is_admin()) App::access_denied('projects');
             $id = $this->input->post('id');
             $data = array('progress' => 100,'auto_progress' => 'FALSE');
-            Assignment::update($id,$data);
+            Project::update($id,$data);
 
             $data = array('task_progress' => 100);
 
@@ -1350,7 +1155,7 @@ class Assignments extends MX_Controller {
 
             // Post to slack channel
             if(config_item('slack_notification') == 'TRUE'){
-                $project_title = Assignment::by_id($id)->project_title;
+                $project_title = Project::by_id($id)->project_title;
                 Applib::slack(
                     sprintf(lang('project_marked_complete'), $project_title),
                     sprintf(lang('project_closed'), $project_title),
@@ -1389,10 +1194,10 @@ class Assignments extends MX_Controller {
         $message = App::email_template('project_complete','template_body');
         $signature = App::email_template('email_signature','template_body');
 
-        $info = Assignment::by_id($project);
+        $info = Project::by_id($project);
 
         $cur = Client::client_currency($info->client);
-        Assignment::update($project,array('status' => 'Done'));
+        Project::update($project,array('status' => 'Done'));
 
         $logo_link = create_email_logo();
 
@@ -1402,8 +1207,8 @@ class Assignments extends MX_Controller {
         $title = str_replace("{PROJECT_TITLE}",$info->project_title,$client);
         $code = str_replace("{PROJECT_CODE}",$info->project_code,$title);
         $link = str_replace("{PROJECT_URL}",base_url().'projects/view/'.$project,$code);
-        $hours = str_replace("{PROJECT_HOURS}",Assignment::total_hours($project),$link);
-        $cost = str_replace("{PROJECT_COST}",$cur->symbol.''.Applib::format_deci(Assignment::sub_total($project)),$hours);
+        $hours = str_replace("{PROJECT_HOURS}",Project::total_hours($project),$link);
+        $cost = str_replace("{PROJECT_COST}",$cur->symbol.''.Applib::format_deci(Project::sub_total($project)),$hours);
         $signature = str_replace("{SIGNATURE}",$signature,$cost);
         $message = str_replace("{SITE_NAME}",config_item('company_name'),$signature);
 
@@ -1423,7 +1228,7 @@ class Assignments extends MX_Controller {
 
     function client_notification($project){
 
-        $info = Assignment::by_id($project);
+        $info = Project::by_id($project);
         $message = App::email_template('project_created','template_body');
         $subject =  App::email_template('project_created','subject');
         $signature = App::email_template('email_signature','template_body');
@@ -1463,7 +1268,7 @@ class Assignments extends MX_Controller {
         $signature = App::email_template('email_signature','template_body');
 
 
-        $info = Assignment::by_id($project);
+        $info = Project::by_id($project);
 
         $logo_link = create_email_logo();
 
@@ -1481,7 +1286,7 @@ class Assignments extends MX_Controller {
         // Send email to team
 
         if(User::is_client()){
-            foreach (Assignment::project_team($project) as $key => $user) {
+            foreach (Project::project_team($project) as $key => $user) {
                 $params['recipient'] = User::login_info($user->assigned_user)->email;
                 $params['subject'] = '['.config_item('company_name').']'.' '.$subject;
                 $params['message'] = $message;
@@ -1509,7 +1314,7 @@ class Assignments extends MX_Controller {
         $logo = str_replace("{INVOICE_LOGO}",$logo_link,$message);
 
         $assigned_by = str_replace("{ASSIGNED_BY}",User::displayName(User::get_id()),$logo);
-        $title = str_replace("{PROJECT_TITLE}",Assignment::by_id($project)->project_title,$assigned_by);
+        $title = str_replace("{PROJECT_TITLE}",Project::by_id($project)->project_title,$assigned_by);
         $link =  str_replace("{PROJECT_URL}",base_url().'projects/view/'.$project,$title);
         $signature = str_replace("{SIGNATURE}",$signature,$link);
         $message = str_replace("{SITE_NAME}",config_item('company_name'),$signature);
@@ -1517,7 +1322,7 @@ class Assignments extends MX_Controller {
         $data['message'] = $message;
         $message = $this->load->view('email_template', $data, TRUE);
 
-        foreach (Assignment::project_team($project) as $user) {
+        foreach (Project::project_team($project) as $user) {
 
             $params['recipient'] = User::login_info($user->assigned_user)->email;
 
@@ -1541,7 +1346,7 @@ class Assignments extends MX_Controller {
         $logo = str_replace("{INVOICE_LOGO}",$logo_link,$message);
 
         $assigned_by = str_replace("{ASSIGNED_BY}",User::displayName(User::get_id()),$logo);
-        $title = str_replace("{PROJECT_TITLE}",Assignment::by_id($project)->project_title,$assigned_by);
+        $title = str_replace("{PROJECT_TITLE}",Project::by_id($project)->project_title,$assigned_by);
         $link =  str_replace("{PROJECT_URL}",base_url().'projects/view/'.$project,$title);
         $signature = str_replace("{SIGNATURE}",$signature,$link);
         $message = str_replace("{SITE_NAME}",config_item('company_name'),$signature);
@@ -1549,11 +1354,11 @@ class Assignments extends MX_Controller {
         $data['message'] = $message;
         $message = $this->load->view('email_template', $data, TRUE);
 
-        // foreach (Assignment::by_id($project) as $user) {
-            // print_r(Assignment::by_id($project)->assign_lead); exit;
+        // foreach (Project::by_id($project) as $user) {
+            // print_r(Project::by_id($project)->assign_lead); exit;
 
 
-            $params['recipient'] = User::login_info(Assignment::by_id($project)->assign_lead)->email;
+            $params['recipient'] = User::login_info(Project::by_id($project)->assign_lead)->email;
 
             $params['subject'] = App::email_template('project_assigned','subject');
             $params['message'] = $message;
@@ -1570,7 +1375,7 @@ class Assignments extends MX_Controller {
         $message = App::email_template('project_updated','template_body');
         $signature = App::email_template('email_signature','template_body');
 
-        $project_title = Assignment::by_id($project)->project_title;
+        $project_title = Project::by_id($project)->project_title;
 
         $logo_link = create_email_logo();
 
@@ -1585,7 +1390,7 @@ class Assignments extends MX_Controller {
         $data['message'] = $message;
         $message = $this->load->view('email_template', $data, TRUE);
 
-        foreach (Assignment::project_team($project) as $user) {
+        foreach (Project::project_team($project) as $user) {
             $params['recipient'] = User::login_info($user->assigned_user)->email;
 
             $params['subject'] = '['.config_item('company_name').']'.' '.lang('project_updated_subject');
@@ -1601,10 +1406,10 @@ class Assignments extends MX_Controller {
 
     function auto_progress($project = NULL){
         if ($project) {
-            $current_status = Assignment::by_id($project)->auto_progress;
+            $current_status = Project::by_id($project)->auto_progress;
             $set_to = ($current_status == 'TRUE') ? 'FALSE' : 'TRUE';
             $data = array('auto_progress'=>$set_to);
-            Assignment::update($project,$data);
+            Project::update($project,$data);
 
             $this->session->set_flashdata('response_status', 'success');
             $this->session->set_flashdata('message', lang('progress_auto_calculated'));
@@ -1633,12 +1438,12 @@ class Assignments extends MX_Controller {
 
     function _admin_projects($archive = FALSE,$filter_by = NULL){
 
-        if ($archive) return Assignment::by_where(array('archived'=>'1'));
+        if ($archive) return Project::by_where(array('archived'=>'1'));
 
         if($filter_by != NULL){
-            return Assignment::by_where(array('archived !='=>'1','status' => $filter_by));
+            return Project::by_where(array('archived !='=>'1','status' => $filter_by));
         }else{
-            return Assignment::by_where(array('archived !='=>'1'));
+            return Project::by_where(array('archived !='=>'1'));
         }
     }
 
@@ -1646,7 +1451,7 @@ class Assignments extends MX_Controller {
     function _staff_projects($archive = FALSE, $filter_by = NULL){
 
         if ($archive) {
-            $pr['projects'] =  Assignment::by_where(array('archived'=>'1','assigned_user'=>User::get_id()),'assign_projects');
+            $pr['projects'] =  Project::by_where(array('archived'=>'1','assigned_user'=>User::get_id()),'assign_projects');
             $lead_check = $this->db->get_where('projects',array('assign_lead'=>$this->session->userdata('user_id'),'archived '=>'1'))->result();
             // $created_check = $this->db->get_where('projects',array('created_by'=>$this->session->userdata('user_id'),'archived '=>'1'))->result();
             if(count($lead_check) != 0){
@@ -1657,10 +1462,10 @@ class Assignments extends MX_Controller {
 
         if($filter_by != NULL){
 
-            return Assignment::by_where(array('assigned_user'=>User::get_id(),'archived !='=>'1','status'=>$filter_by),'assign_projects');
+            return Project::by_where(array('assigned_user'=>User::get_id(),'archived !='=>'1','status'=>$filter_by),'assign_projects');
 
         }else{
-            $pr['projects'] = Assignment::by_where(array('assigned_user'=>User::get_id(),'archived !='=>'1'),'assign_projects');
+            $pr['projects'] = Project::by_where(array('assigned_user'=>User::get_id(),'archived !='=>'1'),'assign_projects');
             $lead_check = $this->db->get_where('projects',array('assign_lead'=>$this->session->userdata('user_id'),'archived '=>'0'))->result();
             // $created_check = $this->db->get_where('projects',array('created_by'=>$this->session->userdata('user_id'),'archived '=>'0'))->result();
             if(count($lead_check) != 0){
@@ -1675,13 +1480,13 @@ class Assignments extends MX_Controller {
     function _client_projects($archive = FALSE, $filter_by = NULL){
         $client = User::profile_info(User::get_id())->company;
         if ($archive) {
-            return Assignment::by_where(array('archived'=>'1','client'=>$client));
+            return Project::by_where(array('archived'=>'1','client'=>$client));
 
         }
         if($filter_by != NULL){
-            return Assignment::by_where(array('client'=>$client, 'archived !=' => '1', 'status' => $filter_by));
+            return Project::by_where(array('client'=>$client, 'archived !=' => '1', 'status' => $filter_by));
         }else{
-            return Assignment::by_where(array('client'=>$client,'archived !=' => '1'));
+            return Project::by_where(array('client'=>$client,'archived !=' => '1'));
         }
     }
 
@@ -1719,9 +1524,9 @@ class Assignments extends MX_Controller {
     function _check_owner($project){
 
         if(User::is_admin()) return TRUE;
-        if(User::profile_info(User::get_id())->company == Assignment::by_id($project)->client){ return TRUE; }
+        if(User::profile_info(User::get_id())->company == Project::by_id($project)->client){ return TRUE; }
         if(User::perm_allowed(User::get_id(),'view_all_projects')) { return TRUE; }
-        if(Assignment::is_assigned(User::get_id(),$project)){ return TRUE;
+        if(Project::is_assigned(User::get_id(),$project)){ return TRUE;
         } else{
             App::access_denied('projects');
         }
@@ -1742,12 +1547,11 @@ class Assignments extends MX_Controller {
 
 
     function grid_view()
-    {   
-        $this->template->title(lang('projects').' - '.config_item('company_name')); 
+    {
         $archive = FALSE;
         if (isset($_GET['view'])) { if ($_GET['view'] == 'archive') { $archive = TRUE; } }
         $data = array(
-            'page' => lang('all_projects'),
+            'page' => lang('projects'),
             'projects' => $this->_project_list($archive),
             'datatables' => TRUE,
             'archive' => $archive
@@ -1767,89 +1571,6 @@ class Assignments extends MX_Controller {
 
     }
 
-
-    // Gantt Chart..
-
-    public function project_chart($project_id)
-    {
-        $data = array(
-                'page' => lang('all_projects'),
-                'form' => TRUE,
-                'datepicker' => TRUE,
-                'nouislider' => TRUE,
-                'editor'    => TRUE,
-                'set_fixed_rate' => TRUE,
-                'project_id' => $project_id
-            );
-        $data['task_list'] = $this->db->get_where('tasks',array('project'=>$project_id))->result_array();
-        $this->session->set_userdata('project_id',$project_id);
-        $this->template->title(lang('projects').' - '.config_item('company_name')); 
-        $this->template
-            ->set_layout('users')
-            ->build('project_chart',isset($data) ? $data : NULL);
-    }
-
-    public function chart_tasks()
-    {
-        $project_id = $this->input->post('project_id');
-        $task_list = $this->db->get_where('tasks',array('project'=>$project_id))->result_array();
-        $taskss = array();
-        $tasks_val = array();
-        $i = 0;
-        if(count($task_list) != 0)
-        {
-            foreach($task_list as $tasks){
-                $s_date_y = date('Y',strtotime($tasks['date_added']));
-                $s_date_m = date('m',strtotime($tasks['date_added']));
-                $s_date_d = date('j',strtotime($tasks['date_added']));
-                $e_date_y = date('Y',strtotime($tasks['due_date']));
-                $e_date_m = date('m',strtotime($tasks['due_date']));
-                $e_date_d = date('j',strtotime($tasks['due_date']));
-                $r[$i][]= $tasks['t_id']; 
-                $r[$i][]= $tasks['task_name']; 
-                $r[$i][]=$s_date_y."/".($s_date_m - 1)."/".$s_date_d; 
-                $r[$i][]=$e_date_y."/".($e_date_m - 1)."/".$e_date_d;
-                $r[$i][]= null; 
-                $r[$i][]= 100; 
-                $r[$i][]= null;
-
-                $taskss[]=$r[$i];
-                $i++;
-            }
-            $e = json_encode($taskss); 
-            echo $e; exit;
-        }else{
-            echo 'empty'; exit;
-        }
-    }
-    function check_project_name()
-    {
-        $project_name = $this->input->post('project_name');
-        $this->db->where("project_title",$project_name);
-        $check_project_name = $this->db->get('dgt_projects')->num_rows();
-        if($check_project_name > 0)
-        {
-            echo "yes";
-        }else{
-            echo "no";
-        }
-        exit;
-    }
-    function check_edit_project_name()
-    {
-        $project_name = $this->input->post('project_name');
-        $id = $this->input->post('id');
-        $this->db->where("project_title",$project_name);
-        $this->db->where("project_id !=",$id);
-        $check_project_name = $this->db->get('dgt_projects')->num_rows();
-        if($check_project_name > 0)
-        {
-            echo "yes";
-        }else{
-            echo "no";
-        }
-        exit;
-    }
 }
 
 /* End of file projects.php */
