@@ -443,6 +443,171 @@ class Assignments extends MX_Controller {
                 ->build('create_project',isset($data) ? $data : NULL);
         }
     }
+	
+	
+	function edit_assignment_det()
+    {
+        // echo User::login_role_name(); exit;
+        $role_id = $this->session->userdata('role_id');
+        $user_id = $this->session->userdata('user_id');
+        $user_details = $this->db->get_where('users',array('id'=>$user_id,'role_id'=>3,'is_teamlead'=>'yes'))->row_array();
+        if(empty($user_details)){
+            if(!User::can_add_project()) App::access_denied('projects');
+        }
+
+        if ($this->input->post()) {
+            // check form validation
+            $this->form_validation->set_rules('billed_ac', 'Billed Account', 'required');
+            $this->form_validation->set_rules('bill_rate', 'Bill Rate', 'required');
+            $this->form_validation->set_rules('payee_ac', 'Payee Account', 'required');
+            $this->form_validation->set_rules('pay_rate', 'Pay Rate', 'required');
+            $this->form_validation->set_rules('bill_terms', 'Bill Terms', 'required');
+            $this->form_validation->set_rules('pay_terms', 'Pay Terms', 'required');
+            $this->form_validation->set_rules('bill_cycle', 'Bill Cycle', 'required');
+            $this->form_validation->set_rules('pay_cycle', 'Pay Cycle', 'required');
+            $this->form_validation->set_rules('resources', 'Resource', 'required');
+            $this->form_validation->set_rules('assignment_name', 'Assignment Name', 'required');
+            $this->form_validation->set_rules('start_date', 'Start Date', 'required');
+            $this->form_validation->set_rules('due_date', 'Due Date', 'required');
+            $this->form_validation->set_rules('margin_rate', 'Margin Rate', 'required');
+            $this->form_validation->set_rules('default_hours', 'Default Hours', 'required');
+            $this->form_validation->set_rules('emp_type', 'Employment Type', 'required');
+            $this->form_validation->set_rules('week_start_day', 'Week Start Day', 'required');
+            $this->form_validation->set_rules('individual_invoice', 'Individual Invoice', 'required');
+            $this->form_validation->set_rules('is_active', 'Is Active', 'required');
+
+            if ($this->form_validation->run() == FALSE) // Validation ok
+            {
+                Applib::make_flashdata(array(
+                    'response_status' => 'error',
+                    'message' => lang('operation_failed'),
+                    'form_error'=> validation_errors()
+                ));
+                // redirect('assignments/add');
+            }else{
+
+                if(User::login_role_name() == 'client'){
+                    $company_id = User::profile_info(User::get_id())->company;
+                    if($company_id > 0){
+                        $_POST['client'] = $company_id;
+                    }else{
+                        $this->session->set_flashdata('tokbox_error', lang('company_not_set'));
+                        redirect('projects');
+                    }
+                }
+                 $_POST['start_date'] = date("Y-m-d", strtotime($this->input->post('start_date')));
+                 $_POST['due_date'] = date("Y-m-d", strtotime($this->input->post('due_date')));
+                 $_POST['created_by'] = $user_id;
+                if (isset($_POST['files'])) { unset($_POST['files']); }
+// echo "<pre>"; print_r($this->input->post()); exit;
+
+                $project_id = Assignment::update_assignment_det($this->input->post('assignment_id'),$this->input->post());
+
+                // Inherit currency and language settings
+
+                if ($_POST['client'] > 0) {
+                    $client_cur = Client::client_currency($_POST['client']);
+                    $client_lang = Client::client_language($_POST['client']);
+                } else {
+                    $client_cur = App::currencies(config_item('default_currency'));
+                    $client_lang = App::languages(config_item('default_language'));
+                }
+                // $data = array(
+                    // 'currency' => $client_cur->code,
+                    // 'language' => $client_lang->name,
+                    // 'project_id' => $project_id
+                // );
+                // Assignment::update($project_id,$data);
+
+
+                // Store assignments in assign_projects table
+
+                // $assign = unserialize($_POST['assign_to']);
+
+                // echo $this->input->post('assign_lead'); exit;
+
+                // Assignment::delete_team($project_id);
+
+                // foreach ($assign as $key => $value) {
+                    // $args = array(
+                        // 'assigned_user' => $value,
+                        // 'project_assigned' => $project_id
+                    // );
+                    // App::save_data('assign_projects',$args);
+                // }
+
+                // Set Fixed Rate
+                // $data = array('fixed_rate' => $fixed_rate);
+                // Assignment::update($project_id,$data);
+
+                // default project settings
+                $default_settings = json_decode(config_item('default_project_settings'),TRUE);
+                foreach ($default_settings as $key => &$value) {
+                    if (strtolower($value) == 'off') {
+                        unset($default_settings[$key]);
+                    }
+                }
+                $default_settings = json_encode($default_settings);
+
+                // $data = array('settings' => $default_settings);
+                // Assignment::update($project_id,$data);
+                // echo $project_id; exit;
+
+                // echo config_item('notify_project_assignments'); exit;
+
+
+                // $this->lead_notification($project_id);
+                // Send email to the assigned users
+                // if(config_item('notify_project_assignments') == 'TRUE'){
+                    // $this->assigned_notification($project_id);
+                // }
+
+                // Send email to client
+                // if(config_item('notify_project_opened') == 'TRUE'){
+                    // $this->client_notification($project_id);
+                // }
+
+                // Post to slack channel
+                // if(config_item('slack_notification') == 'TRUE'){
+                    // $this->load->helper('slack');
+                    // $slack = new Slack_Post;
+                    // $slack->slack_create_project($project_id,User::get_id());
+                // }
+
+                // $data = array(
+                    // 'module' => 'projects',
+                    // 'module_field_id' => $project_id,
+                    // 'user' => User::get_id(),
+                    // 'activity' => 'activity_added_new_project',
+                    // 'icon' => 'fa-coffee',
+                    // 'value1' => $_POST['project_title'],
+                    // 'value2' => ''
+                // );
+                // App::Log($data);
+
+                // Applib::go_to('projects/view/'.$project_id.'?group=dashboard','success',lang('project_added_successfully'));
+                $this->session->set_flashdata('tokbox_success', 'Assignment Details Updated Successfully');
+                // redirect('projects/view/'.$project_id.'?group=dashboard');
+                redirect('assignments/edit/'.$this->input->post('assignment_id'));
+            }
+
+
+        }else{
+            $data = array(
+                'page' => lang('assignments'),
+                'form' => TRUE,
+                'datepicker' => TRUE,
+                'nouislider' => TRUE,
+                'editor'    => TRUE,
+                'set_fixed_rate' => TRUE,
+                'projects' => $this->_project_list()
+            );
+            $this->template->title(lang('projects').' - '.config_item('company_name')); 
+            $this->template
+                ->set_layout('users')
+                ->build('create_project',isset($data) ? $data : NULL);
+        }
+    }
 
 
 
@@ -556,15 +721,23 @@ class Assignments extends MX_Controller {
                 'nouislider' => TRUE,
                 'editor'    => TRUE,
                 'set_fixed_rate' => TRUE,
-                'projects' => $this->_project_list()
+                'projects' => $this->db->select('a.*,AD.fullname')
+                            ->from('dgt_assignments_det a')
+                            ->join('account_details AD','AD.user_id =a.resources','left')
+                            ->where('a.id',$project_id)
+                            ->get()->row_array()
             );
+			
+			// echo '<pre>';print_r($data);exit;
             $data['project_id'] = $project_id;
             $this->template
                 ->set_layout('users')
-                ->build('edit_projects',isset($data) ? $data : NULL);
+                ->build('edit_assignments',isset($data) ? $data : NULL);
         }
     }
-
+	
+	
+	
 
 
     function todo($action = NULL){
@@ -707,6 +880,37 @@ class Assignments extends MX_Controller {
         }else{
             $data['project_id'] = $id;
             $data['action'] = 'delete_project';
+            $this->load->view('modal/project_action',$data);
+        }
+    }
+	
+	function delete_assignments($id = NULL)
+    {
+        if ($this->input->post()) {
+            $this->load->library('form_validation');
+
+            $this->form_validation->set_rules('project_id', 'ID', 'required');
+
+            if ($this->form_validation->run() == FALSE)
+            {
+                $this->session->set_flashdata('response_status', 'error');
+                $this->session->set_flashdata('message', lang('delete_failed'));
+                redirect('assignments');
+            }else{
+
+                $project = $this->input->post('project_id',TRUE);
+                if(User::is_admin() || User::perm_allowed(User::get_id(),'delete_projects')){
+                    Assignment::delete_assignment($project);
+                    // Applib::go_to('projects','success',lang('project_deleted_successfully'));
+                    $this->session->set_flashdata('tokbox_success', 'Assignment deleted successfully');
+                    redirect('assignments');
+                }
+
+            }
+        }else{
+			// echo 'ff';exit;
+            $data['project_id'] = $id;
+            $data['action'] = 'delete_assignment';
             $this->load->view('modal/project_action',$data);
         }
     }

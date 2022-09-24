@@ -84,7 +84,7 @@
 								<?php
 								if(App::is_permit('menu_projects','read')){
 								?>
-									<a class="dropdown-item" href="<?=base_url()?>projects/view/<?=$p->project_id?>"><i class="fa fa-eye m-r-5"></i>Preview Assignment</a>
+								<!--	<a class="dropdown-item" href="<?=base_url()?>projects/view/<?=$p->project_id?>"><i class="fa fa-eye m-r-5"></i>Preview Assignment</a>-->
 								<?php
 								}
 								?>
@@ -92,13 +92,13 @@
 								if(App::is_permit('menu_projects','write')){
 								?>   
 		
-									<a class="dropdown-item" href="<?=base_url()?>projects/edit/<?=$p->project_id?>"><i class="fa fa-pencil m-r-5"></i>Edit Assignment</a>
+									<a class="dropdown-item" href="<?=base_url()?>assignments/edit/<?=$p->id?>"><i class="fa fa-pencil m-r-5"></i>Edit Assignment</a>
 								
 								<?php if ($archive) : ?>
-								<a class="dropdown-item" href="<?=base_url()?>projects/archive/<?=$p->project_id?>/0">Archive Assignment</a>  
+								<!--<a class="dropdown-item" href="<?=base_url()?>projects/archive/<?=$p->project_id?>/0">Archive Assignment</a>-->  
 								<?php else: ?>
 								
-									<a class="dropdown-item" href="<?=base_url()?>projects/archive/<?=$p->project_id?>/1"><i class="fa fa-archive m-r-5" aria-hidden="true"></i>Archive Assignment</a>
+									<!--<a class="dropdown-item" href="<?=base_url()?>projects/archive/<?=$p->project_id?>/1"><i class="fa fa-archive m-r-5" aria-hidden="true"></i>Archive Assignment</a>-->
 								       
 								<?php endif; ?>
 								<?php  
@@ -108,7 +108,7 @@
 								if(App::is_permit('menu_projects','delete')){
 								?> 
 							
-									<a class="dropdown-item" href="<?=base_url()?>projects/delete/<?=$p->project_id?>" data-toggle="ajaxModal"><i class="fa fa-trash-o m-r-5"></i>Delete Assignment</a>
+									<a class="dropdown-item" href="<?=base_url()?>assignments/delete_assignments/<?=$p->id?>" data-toggle="ajaxModal"><i class="fa fa-trash-o m-r-5"></i>Delete Assignment</a>
 								
 								<?php
 								}

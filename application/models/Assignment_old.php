@@ -38,18 +38,6 @@ class Assignment extends CI_Model
         self::$db->insert('assignments',$data);
         return self::$db->insert_id();
     }
-	
-	static function save_assignment_det($data){
-        self::$db->insert('assignments_det',$data);
-        return self::$db->insert_id();
-    }
-	
-	 // Update assignment
-    static function update_assignment_det($project,$data){
-		// echo "<pre>"; print_r($data); exit;
-		unset($data['assignment_id']);
-        return self::$db->where('id',$project)->update('assignments_det',$data);
-    }
 
     // Update Project
     static function update($project,$data){
@@ -65,10 +53,6 @@ class Assignment extends CI_Model
     // Delete task team
     static function delete_task_team($task){
         return self::$db->where('task_assigned',$task)->delete('assign_tasks');
-    }
-	
-	static function delete_assignment($id){
-        return self::$db->where('id',$id)->delete('assignments_det');
     }
 
 
