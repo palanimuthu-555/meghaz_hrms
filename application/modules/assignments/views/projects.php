@@ -12,10 +12,10 @@
 		</div>
 		<div class="col-sm-7 col-12 text-right m-b-20">
 			<a href="<?=base_url()?>assignments/add" class="btn view-btn1 add-btn"><i class="fa fa-plus"></i> Create Assignments</a>
-			<div class="view-icons">
+			<!-- <div class="view-icons">
 				<a href="<?php echo base_url(); ?>assignments" class="list-view btn btn-link active"><i class="fa fa-bars"></i></a>
 				<a href="<?php echo base_url(); ?>assignments/grid_view" class="grid-view btn btn-link "><i class="fa fa-th"></i></a>
-			</div>
+			</div> -->
 		</div>
 	</div>
 </div>

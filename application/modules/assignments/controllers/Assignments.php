@@ -715,7 +715,7 @@ class Assignments extends MX_Controller {
         }else{
             $this->template->title(lang('projects').' - '.config_item('company_name')); 
             $data = array(
-                'page' => lang('all_projects'),
+                'page' => lang('assignments'),
                 'form' => TRUE,
                 'datepicker' => TRUE,
                 'nouislider' => TRUE,
